@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAwFBMVEUAZW0AZmwAZW8AXmIAW2QAZGsAYmsAX2oAXGi22dyry8snd3wAYm4AZ2sAX2lNhYt0oZ9jlpb////8//9EhYcAZW4AXVrA1NbC1+IAYWjs8vMAXmTO3OPM3d4GcXYAVmCmwcaApqitz9QAYmRonKNAfoXZ5ejj8+8kcHpekZehv7+LqrHx/fmbwsMAWF3g7u+HsbI3fX9Xj418nKft7/QAWmhikqAIYXK5zdF/sLCKrKzJ5OKxzMZinpupz9u8zs6Tv8+sAAACGUlEQVR4AY2S12KrMAxAJWM7vmCTVg6hQFnNaEITILO7/f+vuovufV68j21J8ApEQPgKxpDBVyA6XMAnCETZU79cT2lA84Fccr9/0D8k6w4UMwivCeRwEFqioyimuG8cIV+tIku8Y0oPstxRRUrl4YmRIF7oR72xTSfcF6hFPytsMj2diZf/Gc2pcnQAYIQ22rNnZroAxp4cwqNlLoWQPk+4RH6U1k6T+s8xU2FTQ4A8a8Ow6ueqtY70bKse1+WK1hoZL8mm6YLcZEOZ4C2NGHT47dZo5C1Vo90uH9NyT54AEVe8+yPwMFQCPKr4+QhZsr6YU6bBv7Tmv4IBnxZKqGWMXXDEpCSjDaup9QUAIKjmysd6etIZQSfLbR38VVVNYth/Q/rXMNwuHzfwachBmvMVDbpL+EXKRZ6Gu65a5Iw2PaFFoK5d1f3ikLLz6MrOmEYAoZaLBFGjf37TJKazxtUO9OJXrTGQfEBlhIFWtwsqZRft3gF5sjen69kuwksKh3d1EDjHoRyddwbB00ZoZ93QaWPJzYu4FpCkLn+qRGlsMdLR6LAo2hXfudsakLvp0wZmztfUlyboqcTRmBxPnQBV1dTwhMiv73uPPr51HW3OryiHZ+Rk7AddV2e2TCJVL20NL9Aj87AhmlM2aauGSv91WSN07Nx46MbTYuAw+BBjzyIWccfIAD5EO5E2qM8ZfIaQyMAYhJ/xB/nBL4TZV//RAAAAAElFTkSuQmCC">
+<style>
+  :root {
+    --primary: #00656E;
+    --primary-light: #ebf4ff;
+    --border: #cbd5e0;
+    --bg: #f7fafc;
+    --text: #2d3748;
+    --text-light: #718096;
+    --danger: #e53e3e;
+    --success: #38a169;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .form-header {
+    background: var(--primary);
+    color: white;
+    padding: 32px 24px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    margin-bottom: 0;
+  }
+
+  .form-header { display: flex; align-items: center; gap: 20px; }
+  .form-header img { height: 60px; width: auto; }
+  .form-header h1 { font-size: 24px; font-weight: 600; }
+  .form-header p { opacity: 0.85; margin-top: 4px; font-size: 14px; }
+
+  .progress-bar {
+    height: 4px;
+    background: #e2e8f0;
+    border-radius: 0;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--success);
+    transition: width 0.3s ease;
+    border-radius: 0;
+  }
+
+  .section {
+    display: none;
+    background: white;
+    padding: 32px 24px;
+    border: 1px solid var(--border);
+    border-top: none;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .section.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .section-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+
+  .section-desc {
+    color: var(--text-light);
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .field {
+    margin-bottom: 20px;
+  }
+
+  .field label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 4px;
+    font-size: 14px;
+  }
+
+  .field label .required { color: var(--danger); }
+
+  .field input, .field select, .field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(44, 82, 130, 0.1);
+  }
+
+  .field textarea { min-height: 80px; resize: vertical; }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .field-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+
+  .field-row-4 {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 2fr;
+    gap: 12px;
+  }
+
+  .radio-group {
+    display: flex;
+    gap: 20px;
+    margin-top: 4px;
+  }
+
+  .radio-group label {
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+
+  .radio-group input[type="radio"] { width: auto; }
+
+  /* Dynamic list styling */
+  .dynamic-list { margin-bottom: 20px; }
+
+  .dynamic-list .list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .dynamic-list .list-header label {
+    font-weight: 500;
+    font-size: 14px;
+    margin: 0;
+  }
+
+  .list-entry {
+    display: flex;
+    gap: 8px;
+    align-items: start;
+    margin-bottom: 8px;
+    padding: 12px;
+    background: var(--primary-light);
+    border-radius: var(--radius);
+    flex-wrap: wrap;
+  }
+
+  .list-entry .entry-fields {
+    flex: 1;
+    display: grid;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .list-entry input, .list-entry select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 14px;
+    font-family: inherit;
+    background: white;
+  }
+
+  .list-entry .entry-number {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    min-width: 20px;
+    padding-top: 10px;
+  }
+
+  .btn-remove {
+    background: none;
+    border: none;
+    color: var(--danger);
+    cursor: pointer;
+    font-size: 20px;
+    padding: 6px;
+    line-height: 1;
+    border-radius: 50%;
+    align-self: flex-start;
+    margin-top: 4px;
+  }
+
+  .btn-remove:hover { background: #fff5f5; }
+
+  .btn-add {
+    background: none;
+    border: 1px dashed var(--primary);
+    color: var(--primary);
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .btn-add:hover { background: var(--primary-light); }
+
+  /* Validation */
+  .field input.invalid, .field select.invalid, .field textarea.invalid {
+    border-color: var(--danger);
+    background: #fff5f5;
+  }
+
+  .field .error-msg {
+    color: var(--danger);
+    font-size: 12px;
+    margin-top: 2px;
+    display: none;
+  }
+
+  .field .error-msg.visible { display: block; }
+
+  /* Navigation */
+  .nav-buttons {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 24px;
+    background: white;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+  }
+
+  .btn {
+    padding: 10px 28px;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: white;
+  }
+
+  .btn-primary:hover { background: #2b4c7e; }
+  .btn-primary:disabled { background: #a0aec0; cursor: not-allowed; }
+
+  .btn-secondary {
+    background: white;
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover { background: #edf2f7; }
+
+  .btn-submit {
+    background: var(--success);
+    color: white;
+    padding: 12px 40px;
+    font-size: 16px;
+  }
+
+  .btn-submit:hover { background: #2f855a; }
+
+  /* Success page */
+  .success-page {
+    display: none;
+    text-align: center;
+    padding: 60px 24px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .success-page h2 { color: var(--success); margin-bottom: 12px; }
+
+  /* Conditional section */
+  .conditional { display: none; }
+  .conditional.visible { display: block; }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .field-row, .field-row-3, .field-row-4 {
+      grid-template-columns: 1fr;
+    }
+    .container { padding: 12px; }
+    .list-entry { padding: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="form-header">
+    <img src="data:image/png;base64,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" alt="Logo">
+    <div>
+      <h1>Patient Intake</h1>
+      <p>Please complete all sections as thoroughly as possible.</p>
+    </div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progress" style="width: 9%"></div></div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 1: Who is completing -->
+  <!-- ============================================================ -->
+  <div class="section active" data-section="0">
+    <h2 class="section-title">Getting Started</h2>
+    <p class="section-desc"></p>
+
+    <div class="field">
+      <label>Are you the patient or completing this form on behalf of the patient? <span class="required">*</span></label>
+      <div class="radio-group">
+        <label><input type="radio" name="completingFor" value="self" onchange="toggleRespondent()"> I am the patient</label>
+        <label><input type="radio" name="completingFor" value="proxy" onchange="toggleRespondent()"> I am completing this on behalf of the patient</label>
+      </div>
+    </div>
+
+    <div id="respondent-fields" class="conditional">
+      <h3 style="margin: 20px 0 12px; font-size: 16px; color: var(--primary);">Your Information</h3>
+      <div class="field-row">
+        <div class="field">
+          <label>First Name <span class="required">*</span></label>
+          <input type="text" id="respondentFirstName">
+        </div>
+        <div class="field">
+          <label>Last Name <span class="required">*</span></label>
+          <input type="text" id="respondentLastName">
+        </div>
+      </div>
+      <div class="field">
+        <label>Email <span class="required">*</span></label>
+        <input type="email" id="respondentEmail">
+      </div>
+      <div class="field">
+        <label>Phone Number <span class="required">*</span></label>
+        <input type="tel" id="respondentPhone" pattern="[\d\s\-\(\)\+]{10,}" placeholder="(555) 555-5555" oninput="formatPhone(this)">
+      </div>
+      <div class="field">
+        <label>Address <span class="required">*</span></label>
+        <textarea id="respondentAddress" rows="2" placeholder="Street, City, State, Zip"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 2: Patient Information -->
+  <!-- ============================================================ -->
+  <div class="section" data-section="1">
+    <h2 class="section-title">Patient Information</h2>
+    <p class="section-desc"></p>
+
+    <div class="field-row">
+      <div class="field">
+        <label>First Name <span class="required">*</span></label>
+        <input type="text" id="patientFirstName" required>
+      </div>
+      <div class="field">
+        <label>Last Name <span class="required">*</span></label>
+        <input type="text" id="patientLastName" required>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Preferred Name</label>
+        <input type="text" id="preferredName" placeholder="Leave blank if same as first name">
+      </div>
+      <div class="field">
+        <label>Former Name</label>
+        <input type="text" id="formerName" placeholder="Leave blank if none">
+      </div>
+    </div>
+
+    <div class="field-row-3">
+      <div class="field">
+        <label>Sex at Birth <span class="required">*</span></label>
+        <select id="sexAtBirth" required>
+          <option value="">Select...</option>
+          <option>Male</option>
+          <option>Female</option>
+          <option>Intersex</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Gender <span class="required">*</span></label>
+        <select id="gender" required>
+          <option value="">Select...</option>
+          <option>Male</option>
+          <option>Female</option>
+          <option>Transgender Male</option>
+          <option>Transgender Female</option>
+          <option>Non-binary</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Preferred Pronouns <span class="required">*</span></label>
+        <select id="pronouns" required>
+          <option value="">Select...</option>
+          <option>He/Him</option>
+          <option>She/Her</option>
+          <option>They/Them</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Date of Birth <span class="required">*</span></label>
+      <input type="date" id="dateOfBirth" required>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Email <span class="required">*</span></label>
+        <input type="email" id="patientEmail" required>
+        <span class="error-msg" id="patientEmail-error">Please enter a valid email address</span>
+      </div>
+      <div class="field">
+        <label>Phone Number <span class="required">*</span></label>
+        <input type="tel" id="patientPhone" required pattern="[\d\s\-\(\)\+]{10,}" placeholder="(555) 555-5555" oninput="formatPhone(this)">
+        <span class="error-msg" id="patientPhone-error">Please enter a valid 10-digit phone number</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Street Address <span class="required">*</span></label>
+      <input type="text" id="streetAddress" required>
+    </div>
+    <div class="field-row-3">
+      <div class="field">
+        <label>City <span class="required">*</span></label>
+        <input type="text" id="city" required>
+      </div>
+      <div class="field">
+        <label>State <span class="required">*</span></label>
+        <select id="state" required>
+          <option value="">Select...</option>
+          <option>AL</option><option>AK</option><option>AZ</option><option>AR</option>
+          <option>CA</option><option>CO</option><option>CT</option><option>DE</option>
+          <option>FL</option><option>GA</option><option>HI</option><option>ID</option>
+          <option>IL</option><option>IN</option><option>IA</option><option>KS</option>
+          <option>KY</option><option>LA</option><option>ME</option><option>MD</option>
+          <option>MA</option><option>MI</option><option>MN</option><option>MS</option>
+          <option>MO</option><option>MT</option><option>NE</option><option>NV</option>
+          <option>NH</option><option>NJ</option><option>NM</option><option>NY</option>
+          <option>NC</option><option>ND</option><option>OH</option><option>OK</option>
+          <option>OR</option><option>PA</option><option>RI</option><option>SC</option>
+          <option>SD</option><option>TN</option><option>TX</option><option>UT</option>
+          <option>VT</option><option>VA</option><option>WA</option><option>WV</option>
+          <option>WI</option><option>WY</option><option>DC</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Zip Code <span class="required">*</span></label>
+        <input type="text" id="zipCode" required maxlength="10" pattern="\d{5}(-\d{4})?" placeholder="12345">
+        <span class="error-msg" id="zipCode-error">Please enter a valid 5-digit zip code</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 3: Emergency Contact -->
+  <!-- ============================================================ -->
+  <div class="section" data-section="2">
+    <h2 class="section-title">Emergency Contact</h2>
+    <p class="section-desc"></p>
+
+    <div class="field-row">
+      <div class="field">
+        <label>First Name <span class="required">*</span></label>
+        <input type="text" id="ecFirstName" required>
+      </div>
+      <div class="field">
+        <label>Last Name <span class="required">*</span></label>
+        <input type="text" id="ecLastName" required>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Email <span class="required">*</span></label>
+        <input type="email" id="ecEmail" required>
+      </div>
+      <div class="field">
+        <label>Phone Number <span class="required">*</span></label>
+        <input type="tel" id="ecPhone" required pattern="[\d\s\-\(\)\+]{10,}" placeholder="(555) 555-5555" oninput="formatPhone(this)">
+        <span class="error-msg" id="ecPhone-error">Please enter a valid 10-digit phone number</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Relationship to Patient <span class="required">*</span></label>
+      <input type="text" id="ecRelationship" required>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 4: Healthcare Practitioners -->
+  <!-- ============================================================ -->
+  <div class="section" data-section="3">
+    <h2 class="section-title">Healthcare Practitioners</h2>
+    <p class="section-desc">Please list all current healthcare practitioners including name, practice, phone, and fax if known.</p>
+
+    <!-- Therapists -->
+    <div class="field">
+      <label>Do you have a current therapist? <span class="required">*</span></label>
+      <div class="radio-group">
+        <label><input type="radio" name="hasTherapist" value="Yes" onchange="toggleConditional('therapist-list', true)"> Yes</label>
+        <label><input type="radio" name="hasTherapist" value="No" onchange="toggleConditional('therapist-list', false)"> No</label>
+      </div>
+    </div>
+    <div id="therapist-list" class="conditional">
+      <div class="dynamic-list" data-list="therapists" data-type="practitioner">
+        <div class="list-entries"></div>
+        <button type="button" class="btn-add" onclick="addEntry('therapists')">+ Add Therapist</button>
+      </div>
+    </div>
+
+    <!-- Psychiatrists -->
+    <div class="field">
+      <label>Do you have a current psychiatrist? <span class="required">*</span></label>
+      <div class="radio-group">
+        <label><input type="radio" name="hasPsychiatrist" value="Yes" onchange="toggleConditional('psychiatrist-list', true)"> Yes</label>
+        <label><input type="radio" name="hasPsychiatrist" value="No" onchange="toggleConditional('psychiatrist-list', false)"> No</label>
+      </div>
+    </div>
+    <div id="psychiatrist-list" class="conditional">
+      <div class="dynamic-list" data-list="psychiatrists" data-type="practitioner">
+        <div class="list-entries"></div>
+        <button type="button" class="btn-add" onclick="addEntry('psychiatrists')">+ Add Psychiatrist</button>
+      </div>
+    </div>
+
+    <!-- PCP -->
+    <div class="field">
+      <label>Do you have a current PCP? <span class="required">*</span></label>
+      <div class="radio-group">
+        <label><input type="radio" name="hasPCP" value="Yes" onchange="toggleConditional('pcp-list', true)"> Yes</label>
+        <label><input type="radio" name="hasPCP" value="No" onchange="toggleConditional('pcp-list', false)"> No</label>
+      </div>
+    </div>
+    <div id="pcp-list" class="conditional">
+      <div class="dynamic-list" data-list="pcps" data-type="practitioner">
+        <div class="list-entries"></div>
+        <button type="button" class="btn-add" onclick="addEntry('pcps')">+ Add PCP</button>
+      </div>
+    </div>
+
+    <!-- Other -->
+    <div class="field">
+      <label>Do you see any other healthcare practitioners? <span class="required">*</span></label>
+      <div class="radio-group">
+        <label><input type="radio" name="hasOtherPractitioners" value="Yes" onchange="toggleConditional('other-practitioner-list', true)"> Yes</label>
+        <label><input type="radio" name="hasOtherPractitioners" value="No" onchange="toggleConditional('other-practitioner-list', false)"> No</label>
+      </div>
+    </div>
+    <div id="other-practitioner-list" class="conditional">
+      <div class="dynamic-list" data-list="otherPractitioners" data-type="practitioner">
+        <div class="list-entries"></div>
+        <button type="button" class="btn-add" onclick="addEntry('otherPractitioners')">+ Add Practitioner</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 5: Health History -->
+  <!-- ============================================================ -->
+  <div class="section" data-section="4">
+    <h2 class="section-title">Health History</h2>
+    <p class="section-desc">Please list all conditions, surgeries, and hospitalizations. Use the + button to add more entries.</p>
+
+    <!-- Medical Conditions -->
+    <div class="dynamic-list" data-list="medicalConditions" data-type="simple">
+      <div class="list-header">
+        <label>Medical Conditions <span class="required">*</span></label>
+      </div>
+      <p style="font-size:13px; color:var(--text-light); margin-bottom:8px;">Include past serious illnesses and chronic conditions. Add "N/A" if none.</p>
+      <div class="list-entries"></div>
+      <button type="button" class="btn-add" onclick="addEntry('medicalConditions')">+ Add Condition</button>
+    </div>
+
+    <!-- Psychiatric Conditions -->
+    <div class="dynamic-list" data-list="psychiatricConditions" data-type="simple">
+      <div class="list-header">
+        <label>Psychiatric Conditions <span class="required">*</span></label>
+      </div>
+      <p style="font-size:13px; color:var(--text-light); margin-bottom:8px;">Include past and current diagnoses. Add "N/A" if none.</p>
+      <div class="list-entries"></div>
+      <button type="button" class="btn-add" onclick="addEntry('psychiatricConditions')">+ Add Condition</button>
+    </div>
+
+    <!-- Surgeries -->
+    <div class="dynamic-list" data-list="surgeries" data-type="surgery">
+      <div class="list-header">
+        <label>Surgeries <span class="required">*</span></label>
+      </div>
+      <p style="font-size:13px; color:var(--text-light); margin-bottom:8px;">List all surgeries. Add "N/A" if none.</p>
+      <div class="list-entries"></div>
+      <button type="button" class="btn-add" onclick="addEntry('surgeries')">+ Add Surgery</button>
+    </div>
+
+    <!-- Hospitalizations -->
+    <div class="dynamic-list" data-list="hospitalizations" data-type="hospitalization">
+      <div class="list-header">
+        <label>Hospitalizations (non-psychiatric) <span class="required">*</span></label>
+      </div>
+      <p style="font-size:13px; color:var(--text-light); margin-bottom:8px;">Add "N/A" if none.</p>
+      <div class="list-entries"></div>
+      <button type="button" class="btn-add" onclick="addEntry('hospitalizations')">+ Add Hospitalization</button>
+    </div>
+
+    <div class="field">
+      <label>Additional Health Information</label>
+      <textarea id="additionalHealth" placeholder="Anything else health-related you'd like us to know."></textarea>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 6: Substance Use History -->
+  <!-- ============================================================ -->
+  <div class="section" data-section="5">
+    <h2 class="section-title">Substance Use History</h2>
+    <p class="section-desc">Please give as much detail as possible: age of first use, frequency, amount, last use, any treatment. Leave blank if not applicable.</p>
+
+    <div class="field">
+      <label>Alcohol</label>
+      <textarea id="alcohol"></textarea>
+    </div>
+    <div class="field">
+      <label>Tobacco</label>
+      <textarea id="tobacco"></textarea>
+    </div>
+    <div class="field">
+      <label>Cannabis</label>
+      <textarea id="cannabis"></textarea>
+    </div>
+    <div class="field">
+      <label>Opiates</label>
+      <textarea id="opiates"></textarea>
+    </div>
+    <div class="field">
+      <label>Cocaine or other Stimulants</label>
+      <textarea id="stimulants"></textarea>
+    </div>
+    <div class="field">
+      <label>Hallucinogens</label>
+      <textarea id="hallucinogens"></textarea>
+    </div>
+    <div class="field">
+      <label>Benzodiazepines and other Sedatives</label>
+      <textarea id="benzodiazepines"></textarea>
+    </div>
+    <div class="field">
+      <label>Other Substances</label>
+      <textarea id="otherSubstances"></textarea>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 7: Medications -->
+  <!-- ============================================================ -->
+  <div class="section" data-section="6">
+    <h2 class="section-title">Medications</h2>
+    <p class="section-desc"></p>
+
+    <!-- Current Medications -->
+    <div class="dynamic-list" data-list="currentMedications" data-type="currentMed">
+      <div class="list-header">
+        <label>Current Medications <span class="required">*</span></label>
+      </div>
+      <p style="font-size:13px; color:var(--text-light); margin-bottom:8px;">List all current medications, OTC meds, and supplements. Add "N/A" if none.</p>
+      <div class="list-entries"></div>
+      <button type="button" class="btn-add" onclick="addEntry('currentMedications')">+ Add Medication</button>
+    </div>
+
+    <!-- Past Medications -->
+    <div class="dynamic-list" data-list="pastMedications" data-type="pastMed">
+      <div class="list-header">
+        <label>Past Medications <span class="required">*</span></label>
+      </div>
+      <p style="font-size:13px; color:var(--text-light); margin-bottom:8px;">List all past psychiatric and relevant medications. Add "N/A" if none.</p>
+      <div class="list-entries"></div>
+      <button type="button" class="btn-add" onclick="addEntry('pastMedications')">+ Add Past Medication</button>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 8: Allergies -->
+  <!-- ============================================================ -->
+  <div class="section" data-section="7">
+    <h2 class="section-title">Allergies</h2>
+    <p class="section-desc">Include environmental and medication allergies. Add "N/A" if none.</p>
+
+    <div class="dynamic-list" data-list="allergies" data-type="allergy">
+      <div class="list-entries"></div>
+      <button type="button" class="btn-add" onclick="addEntry('allergies')">+ Add Allergy</button>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 9: Past Psychiatric Treatments -->
+  <!-- ============================================================ -->
+  <div class="section" data-section="8">
+    <h2 class="section-title">Past Psychiatric Treatments</h2>
+    <p class="section-desc"></p>
+
+    <div class="field">
+      <label>Psychiatric Hospitalizations <span class="required">*</span></label>
+      <textarea id="psychHospitalizations" required placeholder="Include hospital, date, duration, reason for admission. Write N/A if none."></textarea>
+    </div>
+    <div class="field">
+      <label>Ketamine Treatments <span class="required">*</span></label>
+      <textarea id="ketamineTreatments" required placeholder="Location, number of treatments, route (IV/IM/nasal/sublingual), your experience. Write N/A if none."></textarea>
+    </div>
+    <div class="field">
+      <label>Past Therapy <span class="required">*</span></label>
+      <textarea id="pastTherapy" required placeholder="Modality, relationship with therapist, what was helpful/unhelpful. Write N/A if none."></textarea>
+    </div>
+    <div class="field">
+      <label>Other Treatments <span class="required">*</span></label>
+      <textarea id="otherTreatments" required placeholder="ECT, TMS, Neurofeedback, other psychedelics, etc. Write N/A if none."></textarea>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- SECTION 10: Non-Medical -->
+  <!-- ============================================================ -->
+  <div class="section" data-section="9">
+    <h2 class="section-title">Non-Medical</h2>
+    <p class="section-desc">These questions help us understand you as a whole person beyond your medical history.</p>
+
+    <div class="field">
+      <label>Avocations</label>
+      <textarea id="avocations" placeholder="Activities you do for joy and fulfillment"></textarea>
+    </div>
+    <div class="field">
+      <label>Exercise</label>
+      <textarea id="exercise" placeholder="Type and frequency of exercise"></textarea>
+    </div>
+    <div class="field">
+      <label>Vocations</label>
+      <textarea id="vocations" placeholder="Current and past professions, meaningful work"></textarea>
+    </div>
+    <div class="field">
+      <label>Social</label>
+      <textarea id="social" placeholder="Social network, important relationships"></textarea>
+    </div>
+    <div class="field">
+      <label>Education</label>
+      <textarea id="education" placeholder="Educational experience, highest level attained"></textarea>
+    </div>
+    <div class="field">
+      <label>Spirituality</label>
+      <textarea id="spirituality" placeholder="Religious or spiritual beliefs and practices"></textarea>
+    </div>
+    <div class="field">
+      <label>Goals for Treatment</label>
+      <textarea id="goals" placeholder="What does successful treatment look like for you?"></textarea>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="nav-buttons">
+    <button type="button" class="btn btn-secondary" id="btnBack" onclick="navigate(-1)" style="visibility:hidden">Back</button>
+    <span id="pageIndicator" style="color:var(--text-light); font-size:14px; align-self:center;">Page 1 of 10</span>
+    <button type="button" class="btn btn-primary" id="btnNext" onclick="navigate(1)">Next</button>
+  </div>
+
+  <!-- Success -->
+  <div class="success-page" id="successPage">
+    <h2>Thank you!</h2>
+    <p>Your patient history form has been submitted successfully.</p>
+    <p style="margin-top: 12px; color: var(--text-light);">You may close this window.</p>
+  </div>
+
+</div>
+
+<script>
+  var currentSection = 0;
+  var totalSections = 10;
+
+  // ── Validation ──────────────────────────────────────────────────
+
+  function formatPhone(input) {
+    var digits = input.value.replace(/\D/g, "");
+    if (digits.length > 10) digits = digits.substring(0, 10);
+    if (digits.length >= 6) {
+      input.value = "(" + digits.substring(0,3) + ") " + digits.substring(3,6) + "-" + digits.substring(6);
+    } else if (digits.length >= 3) {
+      input.value = "(" + digits.substring(0,3) + ") " + digits.substring(3);
+    } else {
+      input.value = digits;
+    }
+  }
+
+  function showError(id, show) {
+    var el = document.getElementById(id + "-error");
+    var input = document.getElementById(id);
+    if (el) el.classList.toggle("visible", show);
+    if (input) input.classList.toggle("invalid", show);
+  }
+
+  function validateSection(sectionIndex) {
+    var section = document.querySelectorAll(".section")[sectionIndex];
+    var valid = true;
+
+    // Clear previous errors in this section
+    section.querySelectorAll(".invalid").forEach(function(el) { el.classList.remove("invalid"); });
+    section.querySelectorAll(".error-msg.visible").forEach(function(el) { el.classList.remove("visible"); });
+
+    // Validate email fields
+    section.querySelectorAll('input[type="email"]').forEach(function(input) {
+      if (input.value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.value.trim())) {
+        showError(input.id, true);
+        valid = false;
+      }
+    });
+
+    // Validate phone fields
+    section.querySelectorAll('input[type="tel"]').forEach(function(input) {
+      var digits = input.value.replace(/\D/g, "");
+      if (input.value.trim() && digits.length !== 10) {
+        showError(input.id, true);
+        valid = false;
+      }
+    });
+
+    // Validate zip code
+    var zip = section.querySelector("#zipCode");
+    if (zip && zip.value.trim() && !/^\d{5}(-\d{4})?$/.test(zip.value.trim())) {
+      showError("zipCode", true);
+      valid = false;
+    }
+
+    // Validate required fields
+    section.querySelectorAll("[required]").forEach(function(input) {
+      if (!input.value.trim()) {
+        input.classList.add("invalid");
+        valid = false;
+      }
+    });
+
+    return valid;
+  }
+
+  // ── Navigation ──────────────────────────────────────────────────
+
+  function navigate(direction) {
+    // Validate current section before moving forward
+    if (direction > 0 && !validateSection(currentSection)) {
+      window.scrollTo(0, 0);
+      return;
+    }
+    var sections = document.querySelectorAll(".section");
+    sections[currentSection].classList.remove("active");
+    currentSection += direction;
+    sections[currentSection].classList.add("active");
+    updateNav();
+    window.scrollTo(0, 0);
+  }
+
+  function updateNav() {
+    document.getElementById("btnBack").style.visibility = currentSection === 0 ? "hidden" : "visible";
+    var btnNext = document.getElementById("btnNext");
+
+    if (currentSection === totalSections - 1) {
+      btnNext.textContent = "Submit";
+      btnNext.className = "btn btn-submit";
+      btnNext.onclick = submitFormData;
+    } else {
+      btnNext.textContent = "Next";
+      btnNext.className = "btn btn-primary";
+      btnNext.onclick = function() { navigate(1); };
+    }
+
+    document.getElementById("pageIndicator").textContent =
+      "Page " + (currentSection + 1) + " of " + totalSections;
+    document.getElementById("progress").style.width =
+      ((currentSection + 1) / totalSections * 100) + "%";
+  }
+
+  // ── Conditional fields ──────────────────────────────────────────
+
+  function toggleRespondent() {
+    var val = document.querySelector('input[name="completingFor"]:checked');
+    var el = document.getElementById("respondent-fields");
+    el.classList.toggle("visible", val && val.value === "proxy");
+  }
+
+  function toggleConditional(id, show) {
+    var el = document.getElementById(id);
+    el.classList.toggle("visible", show);
+    if (show) {
+      var listName = el.querySelector(".dynamic-list").dataset.list;
+      var entries = el.querySelectorAll(".list-entry");
+      if (entries.length === 0) addEntry(listName);
+    }
+  }
+
+  // ── Dynamic lists ──────────────────────────────────────────────
+
+  var entryTemplates = {
+    practitioner: function(n) {
+      return '<div class="entry-fields" style="grid-template-columns: 1fr 1fr;">'
+        + '<input type="text" placeholder="Name" data-field="name">'
+        + '<input type="text" placeholder="Practice" data-field="practice">'
+        + '<input type="text" placeholder="Phone" data-field="phone">'
+        + '<input type="text" placeholder="Fax" data-field="fax">'
+        + '</div>';
+    },
+    simple: function(n) {
+      return '<div class="entry-fields" style="grid-template-columns: 1fr;">'
+        + '<input type="text" placeholder="Enter item" data-field="value" style="width:100%">'
+        + '</div>';
+    },
+    currentMed: function(n) {
+      return '<div class="entry-fields" style="grid-template-columns: 2fr 1fr 1fr 1fr 2fr;">'
+        + '<input type="text" placeholder="Medication name" data-field="name">'
+        + '<input type="text" placeholder="Dose" data-field="dose">'
+        + '<input type="text" placeholder="Frequency" data-field="frequency">'
+        + '<input type="text" placeholder="Route (e.g. oral, IM)" data-field="route">'
+        + '<input type="text" placeholder="Reason for use" data-field="reason">'
+        + '</div>';
+    },
+    pastMed: function(n) {
+      return '<div class="entry-fields" style="grid-template-columns: 2fr 1fr 1fr 2fr;">'
+        + '<input type="text" placeholder="Medication name" data-field="name">'
+        + '<input type="text" placeholder="Dose" data-field="dose">'
+        + '<input type="text" placeholder="Frequency" data-field="frequency">'
+        + '<input type="text" placeholder="Reason stopped" data-field="reasonStopped">'
+        + '</div>';
+    },
+    surgery: function(n) {
+      return '<div class="entry-fields" style="grid-template-columns: 2fr 1fr 2fr;">'
+        + '<input type="text" placeholder="Surgery" data-field="name">'
+        + '<input type="date" placeholder="Date" data-field="date" title="Date of surgery">'
+        + '<input type="text" placeholder="Reason" data-field="reason">'
+        + '</div>';
+    },
+    hospitalization: function(n) {
+      return '<div class="entry-fields" style="grid-template-columns: 2fr 1fr 2fr;">'
+        + '<input type="text" placeholder="Hospital / Location" data-field="name">'
+        + '<input type="date" placeholder="Date" data-field="date" title="Date of hospitalization">'
+        + '<input type="text" placeholder="Reason" data-field="reason">'
+        + '</div>';
+    },
+    allergy: function(n) {
+      return '<div class="entry-fields" style="grid-template-columns: 2fr 2fr 1fr;">'
+        + '<input type="text" placeholder="Allergy" data-field="description">'
+        + '<input type="text" placeholder="Reaction" data-field="reaction">'
+        + '<select data-field="severity">'
+        + '<option value="">Severity...</option>'
+        + '<option value="mild">Mild</option>'
+        + '<option value="moderate">Moderate</option>'
+        + '<option value="severe">Severe</option>'
+        + '</select>'
+        + '</div>';
+    }
+  };
+
+  function addEntry(listName) {
+    var listEl = document.querySelector('[data-list="' + listName + '"]');
+    var type = listEl.dataset.type;
+    var container = listEl.querySelector(".list-entries");
+    var count = container.children.length + 1;
+
+    var entry = document.createElement("div");
+    entry.className = "list-entry";
+    entry.innerHTML =
+      '<span class="entry-number">' + count + '</span>'
+      + entryTemplates[type](count)
+      + '<button type="button" class="btn-remove" onclick="removeEntry(this)" title="Remove">&times;</button>';
+
+    container.appendChild(entry);
+  }
+
+  function removeEntry(btn) {
+    var entry = btn.closest(".list-entry");
+    var container = entry.parentNode;
+    container.removeChild(entry);
+    // Re-number
+    var entries = container.querySelectorAll(".list-entry");
+    for (var i = 0; i < entries.length; i++) {
+      entries[i].querySelector(".entry-number").textContent = (i + 1);
+    }
+  }
+
+  // ── Collect form data ──────────────────────────────────────────
+
+  function val(id) {
+    var el = document.getElementById(id);
+    return el ? el.value.trim() : "";
+  }
+
+  function radio(name) {
+    var el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : "";
+  }
+
+  function collectList(listName) {
+    var listEl = document.querySelector('[data-list="' + listName + '"]');
+    if (!listEl) return [];
+    var type = listEl.dataset.type;
+    var entries = listEl.querySelectorAll(".list-entry");
+    var result = [];
+
+    for (var i = 0; i < entries.length; i++) {
+      var entry = entries[i];
+      if (type === "simple") {
+        var v = entry.querySelector('[data-field="value"]').value.trim();
+        if (v) result.push(v);
+      } else {
+        var obj = {};
+        var fields = entry.querySelectorAll("[data-field]");
+        var hasValue = false;
+        for (var j = 0; j < fields.length; j++) {
+          var f = fields[j];
+          obj[f.dataset.field] = f.value.trim();
+          if (f.value.trim()) hasValue = true;
+        }
+        if (hasValue) result.push(obj);
+      }
+    }
+    return result;
+  }
+
+  function submitFormData() {
+    var btn = document.getElementById("btnNext");
+    btn.disabled = true;
+    btn.textContent = "Submitting...";
+
+    var data = {
+      completingFor: radio("completingFor"),
+      respondentFirstName: val("respondentFirstName"),
+      respondentLastName: val("respondentLastName"),
+      respondentEmail: val("respondentEmail"),
+      respondentPhone: val("respondentPhone"),
+      respondentAddress: val("respondentAddress"),
+
+      patientFirstName: val("patientFirstName"),
+      patientLastName: val("patientLastName"),
+      preferredName: val("preferredName"),
+      formerName: val("formerName"),
+      sexAtBirth: val("sexAtBirth"),
+      gender: val("gender"),
+      pronouns: val("pronouns"),
+      dateOfBirth: val("dateOfBirth"),
+      patientEmail: val("patientEmail"),
+      patientPhone: val("patientPhone"),
+      streetAddress: val("streetAddress"),
+      city: val("city"),
+      state: val("state"),
+      zipCode: val("zipCode"),
+
+      ecFirstName: val("ecFirstName"),
+      ecLastName: val("ecLastName"),
+      ecEmail: val("ecEmail"),
+      ecPhone: val("ecPhone"),
+      ecRelationship: val("ecRelationship"),
+
+      hasTherapist: radio("hasTherapist"),
+      therapists: collectList("therapists"),
+      hasPsychiatrist: radio("hasPsychiatrist"),
+      psychiatrists: collectList("psychiatrists"),
+      hasPCP: radio("hasPCP"),
+      pcps: collectList("pcps"),
+      hasOtherPractitioners: radio("hasOtherPractitioners"),
+      otherPractitioners: collectList("otherPractitioners"),
+
+      medicalConditions: collectList("medicalConditions"),
+      psychiatricConditions: collectList("psychiatricConditions"),
+      surgeries: collectList("surgeries"),
+      hospitalizations: collectList("hospitalizations"),
+      additionalHealth: val("additionalHealth"),
+
+      alcohol: val("alcohol"),
+      tobacco: val("tobacco"),
+      cannabis: val("cannabis"),
+      opiates: val("opiates"),
+      stimulants: val("stimulants"),
+      hallucinogens: val("hallucinogens"),
+      benzodiazepines: val("benzodiazepines"),
+      otherSubstances: val("otherSubstances"),
+
+      currentMedications: collectList("currentMedications"),
+      pastMedications: collectList("pastMedications"),
+
+      allergies: collectList("allergies"),
+
+      psychHospitalizations: val("psychHospitalizations"),
+      ketamineTreatments: val("ketamineTreatments"),
+      pastTherapy: val("pastTherapy"),
+      otherTreatments: val("otherTreatments"),
+
+      avocations: val("avocations"),
+      exercise: val("exercise"),
+      vocations: val("vocations"),
+      social: val("social"),
+      education: val("education"),
+      spirituality: val("spirituality"),
+      goals: val("goals")
+    };
+
+    google.script.run
+      .withSuccessHandler(function() {
+        document.querySelectorAll(".section").forEach(function(s) { s.classList.remove("active"); });
+        document.querySelector(".nav-buttons").style.display = "none";
+        document.querySelector(".progress-bar").style.display = "none";
+        document.getElementById("successPage").style.display = "block";
+      })
+      .withFailureHandler(function(err) {
+        alert("Error submitting form: " + err.message + "\n\nPlease try again.");
+        btn.disabled = false;
+        btn.textContent = "Submit";
+      })
+      .submitForm(data);
+  }
+
+  // ── Init: add first entry to each always-visible list ──────────
+
+  (function() {
+    var alwaysVisible = [
+      "medicalConditions", "psychiatricConditions", "surgeries",
+      "hospitalizations", "currentMedications", "pastMedications", "allergies"
+    ];
+    for (var i = 0; i < alwaysVisible.length; i++) {
+      addEntry(alwaysVisible[i]);
+    }
+  })();
+</script>
+</body>
+</html>

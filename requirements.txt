@@ -1,0 +1,8 @@
+requests
+requests-oauthlib
+python-dotenv
+gspread
+google-auth
+google-auth-oauthlib
+reportlab
+google-api-python-client
