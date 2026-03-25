@@ -10,6 +10,10 @@
 
 const SHEET_NAME = "Form Responses 1";
 
+// GitHub Actions webhook — triggers intake import on new submission
+const GITHUB_REPO = "somanoetic/intake-form-integration";
+const GITHUB_TOKEN = PropertiesService.getScriptProperties().getProperty("GITHUB_TOKEN");
+
 function doGet() {
   return HtmlService.createHtmlOutputFromFile("form")
     .setTitle("Patient History")
@@ -35,7 +39,32 @@ function submitForm(data) {
   const row = buildRow(data);
   sheet.appendRow(row);
 
+  // Trigger GitHub Actions to process the new submission
+  triggerImport_();
+
   return { success: true };
+}
+
+function triggerImport_() {
+  if (!GITHUB_TOKEN) return;
+  try {
+    UrlFetchApp.fetch(
+      "https://api.github.com/repos/" + GITHUB_REPO + "/actions/workflows/import.yml/dispatches",
+      {
+        method: "post",
+        headers: {
+          "Authorization": "Bearer " + GITHUB_TOKEN,
+          "Accept": "application/vnd.github.v3+json",
+        },
+        contentType: "application/json",
+        payload: JSON.stringify({ ref: "main" }),
+        muteHttpExceptions: true,
+      }
+    );
+  } catch (e) {
+    // Don't fail the form submission if the trigger fails
+    console.log("GitHub trigger failed: " + e);
+  }
 }
 
 function getHeaders() {
@@ -213,3 +242,4 @@ function formatAllergyEntries(entries) {
     })
     .join("\n") || "N/A";
 }
+

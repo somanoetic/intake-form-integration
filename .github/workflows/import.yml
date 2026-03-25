@@ -44,6 +44,8 @@ jobs:
 
       - name: Run intake import
         run: python import_intake.py
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Save tokens to cache
         if: always()

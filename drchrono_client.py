@@ -1,9 +1,11 @@
 """DrChrono API client for patient intake — reuses token from gcal-drchrono-sync."""
 
+import base64
 import json
 import os
 import time
 import requests
+from nacl import encoding, public
 
 import config
 
@@ -54,18 +56,66 @@ def _refresh_token(token):
     if "refresh_token" not in new_token:
         new_token["refresh_token"] = token["refresh_token"]
     _save_token(new_token)
+    _sync_token_to_secret(new_token)
     print("  DrChrono token refreshed.")
     return new_token
+
+
+def _sync_token_to_secret(token):
+    """Update the DRCHRONO_TOKEN GitHub secret so the fallback stays current."""
+    gh_token = os.getenv("GH_TOKEN")
+    repo = os.getenv("GITHUB_REPOSITORY")
+    if not gh_token or not repo:
+        return
+    try:
+        headers = {
+            "Authorization": f"Bearer {gh_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        }
+        # Get the repo public key for secret encryption
+        key_resp = requests.get(
+            f"https://api.github.com/repos/{repo}/actions/secrets/public-key",
+            headers=headers,
+        )
+        key_resp.raise_for_status()
+        key_data = key_resp.json()
+
+        # Encrypt the token value
+        public_key = public.PublicKey(
+            key_data["key"].encode("utf-8"), encoding.Base64Encoder
+        )
+        sealed_box = public.SealedBox(public_key)
+        encrypted = sealed_box.encrypt(json.dumps(token).encode("utf-8"))
+        encrypted_b64 = base64.b64encode(encrypted).decode("utf-8")
+
+        # Update the secret
+        requests.put(
+            f"https://api.github.com/repos/{repo}/actions/secrets/DRCHRONO_TOKEN",
+            headers=headers,
+            json={
+                "encrypted_value": encrypted_b64,
+                "key_id": key_data["key_id"],
+            },
+        ).raise_for_status()
+        print("  GitHub secret DRCHRONO_TOKEN updated.")
+    except Exception as e:
+        print(f"  Warning: could not update GitHub secret: {e}")
 
 
 def _request_with_retry(session, method, url, max_retries=3, **kwargs):
     for attempt in range(max_retries + 1):
         resp = getattr(session, method)(url, **kwargs)
-        if resp.status_code != 429:
+        if resp.status_code == 429:
+            wait = int(resp.headers.get("Retry-After", 2 ** attempt))
+            print(f"    Rate limited, waiting {wait}s...")
+            time.sleep(wait)
+        elif resp.status_code >= 500 and attempt < max_retries:
+            wait = 2 ** attempt
+            print(f"    Server error ({resp.status_code}), retrying in {wait}s...")
+            time.sleep(wait)
+        else:
             return resp
-        wait = int(resp.headers.get("Retry-After", 2 ** attempt))
-        print(f"    Rate limited, waiting {wait}s...")
-        time.sleep(wait)
     return resp
 
 

@@ -6,3 +6,4 @@ google-auth
 google-auth-oauthlib
 reportlab
 google-api-python-client
+PyNaCl
