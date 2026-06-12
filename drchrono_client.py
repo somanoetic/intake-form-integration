@@ -3,6 +3,7 @@
 import base64
 import json
 import os
+import re
 import time
 import requests
 from nacl import encoding, public
@@ -144,6 +145,183 @@ def find_patient(last_name, date_of_birth, first_name=None):
     return results[0] if results else None
 
 
+def normalize_lastname(name):
+    """Lowercase + strip whitespace, hyphens, apostrophes, periods.
+
+    Used for conservative fuzzy matching: "Smith-Jones", "Smith Jones",
+    "SmithJones", "smith jones" all normalize to "smithjones".
+    """
+    return re.sub(r"[\s\-'’.]", "", name or "").lower()
+
+
+def _search_patients(last_name, date_of_birth=None):
+    session = _get_session()
+    # DrChrono's /patients search excludes Inactive and Inactive-Deceased
+    # patients by default. Passing patient_status disables that filter so
+    # we can still match (and route to manual review) against records
+    # staff have inactivated.
+    params = {"last_name": last_name, "patient_status": "A,I,D"}
+    if date_of_birth:
+        params["date_of_birth"] = date_of_birth
+    resp = _request_with_retry(session, "get",
+                               f"{config.DRCHRONO_API_BASE}/patients",
+                               params=params)
+    resp.raise_for_status()
+    return resp.json().get("results", [])
+
+
+def _digits_only(s):
+    return re.sub(r"\D", "", s or "")
+
+
+def _search_patients_by_email(email):
+    """DrChrono /patients supports `email` as a case-insensitive exact filter."""
+    session = _get_session()
+    params = {"email": email, "patient_status": "A,I,D"}
+    resp = _request_with_retry(session, "get",
+                               f"{config.DRCHRONO_API_BASE}/patients",
+                               params=params)
+    resp.raise_for_status()
+    return resp.json().get("results", [])
+
+
+def find_patient_candidates(last_name, date_of_birth, first_name=None,
+                            email=None, cell_phone=None):
+    """Decide whether to auto-match, auto-create, or queue for review.
+
+    Returns a dict with:
+      - decision: "match" | "create" | "review"
+      - patient: the matched patient dict (when decision == "match")
+      - reason: human-readable reason (when decision == "review")
+      - candidates: list of candidate patient dicts (when decision == "review")
+    """
+    results = _search_patients(last_name, date_of_birth)
+
+    # Active patients auto-match. Inactive/Deceased route to review so
+    # staff confirm before reviving an intentionally-inactivated record.
+    def _matchable(p):
+        return (p.get("patient_status") or "A") == "A"
+
+    if len(results) == 1:
+        p = results[0]
+        first_ok = not first_name or p.get("first_name", "").lower() == first_name.lower()
+        if first_ok and _matchable(p):
+            return {"decision": "match", "patient": p}
+        if first_ok and not _matchable(p):
+            return {
+                "decision": "review",
+                "reason": (
+                    f"Only match is a non-active patient "
+                    f"(chart {p.get('chart_id')}, status {p.get('patient_status')}). "
+                    "Reactivate and use this record, or force 'new'."
+                ),
+                "candidates": results,
+            }
+        return {
+            "decision": "review",
+            "reason": (
+                f"Last name + DOB matched one patient, but first name "
+                f"differs (form: '{first_name}', DrChrono: '{p.get('first_name', '')}')."
+            ),
+            "candidates": results,
+        }
+
+    if len(results) > 1:
+        matchable = [p for p in results if _matchable(p)]
+        if first_name:
+            exact = [p for p in matchable
+                     if p.get("first_name", "").lower() == first_name.lower()]
+            if len(exact) == 1:
+                return {"decision": "match", "patient": exact[0]}
+        return {
+            "decision": "review",
+            "reason": (
+                f"Last name + DOB matched {len(results)} patients "
+                f"({len(matchable)} active/prospective, "
+                f"{len(results) - len(matchable)} inactive/deceased)."
+            ),
+            "candidates": results,
+        }
+
+    # Zero exact hits — try conservative last-name variants.
+    target = normalize_lastname(last_name)
+    tried = {last_name.lower()}
+    variants = [
+        last_name.replace("-", " "),
+        last_name.replace("-", ""),
+        last_name.replace("'", "").replace("’", ""),
+        last_name.replace(" ", ""),
+    ]
+    fuzzy_hits = []
+    for v in variants:
+        if not v or v.lower() in tried:
+            continue
+        tried.add(v.lower())
+        for p in _search_patients(v, date_of_birth):
+            if normalize_lastname(p.get("last_name", "")) == target:
+                if not any(c.get("id") == p.get("id") for c in fuzzy_hits):
+                    fuzzy_hits.append(p)
+
+    if fuzzy_hits:
+        return {
+            "decision": "review",
+            "reason": (
+                f"No exact last-name match, but {len(fuzzy_hits)} patient(s) "
+                f"share DOB with a similar last name (hyphen/space/apostrophe variant)."
+            ),
+            "candidates": fuzzy_hits,
+        }
+
+    # Last resort: search by last_name alone, and separately by email.
+    # This catches phone-booked patients whose DOB wasn't entered yet
+    # (which would otherwise silently create a duplicate — the Lisa
+    # Valentine 2026-04-22 bug), as well as name changes (maiden/married)
+    # where email or phone still line up.
+    suspects = []
+    seen_ids = set()
+
+    def _add(p):
+        if p.get("id") and p.get("id") not in seen_ids:
+            seen_ids.add(p["id"])
+            suspects.append(p)
+
+    # Flag any last-name match with a blank DOB, matching first name,
+    # matching email, or matching phone number.
+    email_norm = (email or "").strip().lower()
+    phone_digits = _digits_only(cell_phone)
+    for p in _search_patients(last_name):
+        p_dob = (p.get("date_of_birth") or "").strip()
+        p_first = (p.get("first_name") or "").lower()
+        p_email = (p.get("email") or "").strip().lower()
+        p_phone = _digits_only(p.get("cell_phone") or "")
+        if not p_dob:
+            _add(p)
+        elif first_name and p_first == first_name.lower():
+            _add(p)
+        elif email_norm and p_email == email_norm:
+            _add(p)
+        elif phone_digits and p_phone and p_phone == phone_digits:
+            _add(p)
+
+    # Also look up by email directly (catches last-name changes).
+    if email_norm:
+        for p in _search_patients_by_email(email_norm):
+            _add(p)
+
+    if suspects:
+        return {
+            "decision": "review",
+            "reason": (
+                f"No DOB match, but {len(suspects)} patient(s) share "
+                "last name, email, or phone with the submission. "
+                "Likely a phone-booked account or a name change."
+            ),
+            "candidates": suspects,
+        }
+
+    return {"decision": "create"}
+
+
 def create_patient(data):
     """Create a new patient. data must include doctor, first_name, last_name, gender."""
     session = _get_session()
@@ -244,14 +422,23 @@ def add_allergy(patient_id, description, **kwargs):
 
 # ── Problems / Conditions ────────────────────────────────────────────
 
-def add_problem(patient_id, name, **kwargs):
+def add_problem(patient_id, name, icd_code=None, **kwargs):
+    """Add a problem to the patient's chart.
+
+    DrChrono's structured Problem List requires an ICD-10 code; without
+    `icd_code` the entry stays free-text and won't surface as a coded
+    diagnosis. Defaults status to "active" so it lands as an active problem.
+    """
     session = _get_session()
     payload = {
         "patient": patient_id,
         "doctor": int(config.DRCHRONO_DOCTOR_ID),
         "name": name,
+        "status": kwargs.pop("status", "active"),
         **kwargs,
     }
+    if icd_code:
+        payload["icd_code"] = icd_code
     resp = _request_with_retry(session, "post",
                                f"{config.DRCHRONO_API_BASE}/problems",
                                json=payload)

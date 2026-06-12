@@ -19,6 +19,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 import config
 import drchrono_client
+import icd_map
 import intake_pdf
 import notify
 
@@ -50,22 +51,42 @@ def get_sheets_client():
 
 
 def get_unprocessed_rows(sheet):
-    """Return rows that haven't been marked as processed.
+    """Return rows that need work.
+
+    Includes:
+      - Rows with an empty Processed column (new submissions).
+      - Rows marked PENDING REVIEW that now have a resolution in MATCH_COLUMN.
 
     Returns list of (row_number, row_dict) tuples.
     """
-    records = sheet.get_all_records()
+    # numericise_ignore=['all'] keeps every cell as a string so leading zeros
+    # (e.g. zip codes like 02134) are not stripped by gspread's number parsing.
+    records = sheet.get_all_records(numericise_ignore=["all"])
     headers = sheet.row_values(1)
 
-    # Add "Processed" column if it doesn't exist
-    if config.PROCESSED_COLUMN not in headers:
-        next_col = len(headers) + 1
-        sheet.update_cell(1, next_col, config.PROCESSED_COLUMN)
+    # Ensure required columns exist
+    updated_headers = False
+    for col_name in (config.PROCESSED_COLUMN, config.MATCH_COLUMN):
+        if col_name not in headers:
+            # Grow the grid if the new column would exceed it, otherwise the
+            # update_cell write fails with "exceeds grid limits".
+            if len(headers) + 1 > sheet.col_count:
+                sheet.add_cols(1)
+            headers.append(col_name)
+            sheet.update_cell(1, len(headers), col_name)
+            updated_headers = True
+    if updated_headers:
+        # Re-fetch so freshly added columns appear in row dicts
+        records = sheet.get_all_records(numericise_ignore=["all"])
 
     unprocessed = []
     for i, row in enumerate(records):
-        if not row.get(config.PROCESSED_COLUMN):
-            unprocessed.append((i + 2, row))  # +2: 1-indexed + header row
+        status = str(row.get(config.PROCESSED_COLUMN, "")).strip()
+        match_override = str(row.get(config.MATCH_COLUMN, "")).strip()
+        if not status:
+            unprocessed.append((i + 2, row))
+        elif status.startswith(config.PENDING_STATUS) and match_override:
+            unprocessed.append((i + 2, row))
 
     return unprocessed
 
@@ -75,6 +96,16 @@ def mark_processed(sheet, row_number, status="Done"):
     headers = sheet.row_values(1)
     col = headers.index(config.PROCESSED_COLUMN) + 1
     sheet.update_cell(row_number, col, f"{status} {datetime.now():%Y-%m-%d %H:%M}")
+
+
+def mark_pending_review(sheet, row_number, reason):
+    """Mark a row as awaiting manual match resolution."""
+    headers = sheet.row_values(1)
+    col = headers.index(config.PROCESSED_COLUMN) + 1
+    sheet.update_cell(
+        row_number, col,
+        f"{config.PENDING_STATUS} {datetime.now():%Y-%m-%d %H:%M} — {reason}"
+    )
 
 
 def parse_list_field(text):
@@ -136,6 +167,11 @@ def clean_zip(zip_code):
     digits = re.sub(r"[^\d-]", "", str(zip_code)).strip()
     if re.match(r"^\d{5}(-\d{4})?$", digits):
         return digits
+    # Recover a leading zero stripped by numeric coercion upstream
+    # (e.g. New England zips like 02134 read as the integer 2134).
+    bare = digits.split("-")[0]
+    if 1 <= len(bare) <= 4 and bare.isdigit():
+        return bare.zfill(5)
     # Try extracting just 5 digits
     match = re.search(r"\d{5}", str(zip_code))
     return match.group(0) if match else ""
@@ -178,7 +214,7 @@ def build_patient_data(row):
         "address": row.get("Patient Street Address", ""),
         "city": row.get("Patient City", ""),
         "state": row.get("Patient State", ""),
-        "zip_code": clean_zip(row.get("Patient Zip Code", "")),
+        "zip_zipcode": clean_zip(row.get("Patient Zip Code", "")),
         "preferred_language": "eng",
     }
 
@@ -232,15 +268,39 @@ def process_row(row_number, row, dry_run=False):
     for k, v in demo_data.items():
         print(f"    {k}: {v}")
 
+    # Resolve override from the Match Patient ID column, if present.
+    override = str(row.get(config.MATCH_COLUMN, "")).strip().lower()
+
     if not dry_run:
-        patient = drchrono_client.find_patient(last_name, dob, first_name)
-        if patient:
-            patient_id = patient["id"]
-            print(f"  Found existing patient: ID {patient_id}")
-        else:
+        if override == "skip":
+            print("  Resolution 'skip' — discarding this submission.")
+            return "Skipped by user"
+        if override == "new":
             patient = drchrono_client.create_patient(demo_data)
             patient_id = patient["id"]
-            print(f"  Created new patient: ID {patient_id}")
+            print(f"  Created new patient (user-forced): ID {patient_id}")
+        elif override.isdigit():
+            patient_id = int(override)
+            print(f"  Using user-provided patient ID: {patient_id}")
+        else:
+            decision = drchrono_client.find_patient_candidates(
+                last_name, dob, first_name,
+                email=demo_data.get("email"),
+                cell_phone=demo_data.get("cell_phone"),
+            )
+            if decision["decision"] == "match":
+                patient_id = decision["patient"]["id"]
+                print(f"  Found existing patient: ID {patient_id}")
+            elif decision["decision"] == "create":
+                patient = drchrono_client.create_patient(demo_data)
+                patient_id = patient["id"]
+                print(f"  Created new patient: ID {patient_id}")
+            else:  # review
+                return {
+                    "status": "review",
+                    "reason": decision["reason"],
+                    "candidates": decision.get("candidates", []),
+                }
 
         patch_data = {k: v for k, v in demo_data.items() if k != "doctor"}
         drchrono_client.update_patient(patient_id, patch_data)
@@ -298,35 +358,57 @@ def process_row(row_number, row, dry_run=False):
         if not dry_run:
             drchrono_client.add_allergy(patient_id, a["name"], **kwargs)
 
-    # 4. Medical conditions
-    conditions = parse_list_field(row.get("Medical Conditions", ""))
-    if conditions:
-        print(f"  {prefix}Medical conditions ({len(conditions)}):")
-        for c in conditions:
-            if c.lower().strip() in existing_problem_names:
-                print(f"    {c} (already exists, skipped)")
-            else:
-                print(f"    {c}")
-    if not dry_run:
-        for condition in conditions:
-            if condition.lower().strip() not in existing_problem_names:
-                drchrono_client.add_problem(patient_id, condition)
+    # 4. Medical + psychiatric conditions -> ICD-10-coded problems.
+    # DrChrono's Problem List needs an ICD-10 code per entry. We hand the raw
+    # patient lines to Claude, which splits multi-condition lines (e.g.
+    # "Depression/Anxiety") and codes each one. Conditions Claude can't
+    # confidently code are collected in `unmapped_conditions` for the review
+    # email and the intake PDF rather than posted with a wrong/no code.
+    condition_lines = (
+        parse_list_field(row.get("Medical Conditions", ""))
+        + parse_list_field(row.get("Psychiatric Conditions", ""))
+    )
 
-    psych_conditions = parse_list_field(row.get("Psychiatric Conditions", ""))
-    if psych_conditions:
-        print(f"  {prefix}Psychiatric conditions ({len(psych_conditions)}):")
-        for c in psych_conditions:
-            if c.lower().strip() in existing_problem_names:
-                print(f"    {c} (already exists, skipped)")
-            else:
-                print(f"    {c}")
-    if not dry_run:
-        for condition in psych_conditions:
-            if condition.lower().strip() not in existing_problem_names:
-                drchrono_client.add_problem(patient_id, condition)
+    unmapped_conditions = []
+    if condition_lines:
+        print(f"  {prefix}Condition lines from patient ({len(condition_lines)}):")
+        if dry_run:
+            for c in condition_lines:
+                print(f"    {c} (would split + map to ICD-10)")
+        else:
+            mappings = icd_map.map_conditions(condition_lines)
+            # De-dupe split conditions against existing problems and within
+            # this batch (case-insensitive on the canonical name).
+            seen = set()
+            for m in mappings:
+                key = m["name"].lower().strip()
+                if key in existing_problem_names:
+                    print(f"    {m['input']} -> {m['name']} (already exists, skipped)")
+                    continue
+                if key in seen:
+                    continue
+                seen.add(key)
+                if m["mapped"]:
+                    print(f"    {m['input']} -> {m['icd_code']} {m['name']} ({m['confidence']})")
+                    drchrono_client.add_problem(
+                        patient_id, m["name"], icd_code=m["icd_code"]
+                    )
+                else:
+                    print(f"    {m['input']} -> NO CONFIDENT CODE ({m['confidence']}) — flagged for review")
+                    unmapped_conditions.append(m["input"])
 
     # 5. Build intake document from all narrative/unmapped fields
     doc_sections = []
+
+    # Conditions we couldn't confidently auto-code go here so a clinician can
+    # add them to the Problem List manually — they are NOT in DrChrono yet.
+    if unmapped_conditions:
+        doc_sections.append((
+            "Conditions Needing Manual ICD-10 Coding",
+            "These patient-reported conditions could not be auto-coded and "
+            "were NOT added to the Problem List:\n"
+            + "\n".join(f"- {c}" for c in unmapped_conditions),
+        ))
 
     # Additional patient info (no DrChrono field)
     unmapped_lines = []
@@ -502,12 +584,27 @@ def main():
         return
 
     errors = []
+    pending = []
     success_count = 0
 
     for row_number, row in rows:
         patient_name = f"{row.get('Patient First Name', '')} {row.get('Patient Last Name', '')}".strip()
         try:
             status = process_row(row_number, row, dry_run=args.dry_run)
+            if isinstance(status, dict) and status.get("status") == "review":
+                print(f"  QUEUED FOR REVIEW: {status['reason']}")
+                if not args.dry_run:
+                    mark_pending_review(sheet, row_number, status["reason"])
+                pending.append({
+                    "row_number": row_number,
+                    "patient_name": patient_name or f"Row {row_number}",
+                    "dob": format_date(row.get("Date of Birth", "")),
+                    "email": row.get("Patient Email", ""),
+                    "phone": row.get("Patient Phone Number", ""),
+                    "reason": status["reason"],
+                    "candidates": status.get("candidates", []),
+                })
+                continue
             if not args.dry_run:
                 mark_processed(sheet, row_number, status)
             success_count += 1
@@ -524,16 +621,22 @@ def main():
             if not args.dry_run:
                 mark_processed(sheet, row_number, f"Error: {e}")
 
-    print(f"\nFinished processing {len(rows)} submission(s): {success_count} OK, {len(errors)} error(s).")
+    print(f"\nFinished processing {len(rows)} submission(s): "
+          f"{success_count} OK, {len(pending)} need review, {len(errors)} error(s).")
 
     # Send notifications (only in live mode)
     if not args.dry_run:
+        if pending:
+            try:
+                notify.send_review_email(pending)
+            except Exception as e:
+                print(f"  WARNING: Failed to send review notification: {e}")
         if errors:
             try:
                 notify.send_error_email(errors)
             except Exception as e:
                 print(f"  WARNING: Failed to send error notification: {e}")
-        elif success_count > 0:
+        elif success_count > 0 and not pending:
             try:
                 notify.send_success_email(success_count)
             except Exception as e:
