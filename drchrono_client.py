@@ -425,9 +425,11 @@ def add_allergy(patient_id, description, **kwargs):
 def add_problem(patient_id, name, icd_code=None, **kwargs):
     """Add a problem to the patient's chart.
 
-    DrChrono's structured Problem List requires an ICD-10 code; without
-    `icd_code` the entry stays free-text and won't surface as a coded
-    diagnosis. Defaults status to "active" so it lands as an active problem.
+    DrChrono's structured Problem List requires an ICD-10 code AND its
+    code-set version: `icd_code` must be accompanied by `icd_version=10`,
+    otherwise DrChrono can't resolve the code and the entry stays free-text
+    instead of becoming a coded diagnosis. Defaults status to "active" so it
+    lands as an active problem.
     """
     session = _get_session()
     payload = {
@@ -439,6 +441,7 @@ def add_problem(patient_id, name, icd_code=None, **kwargs):
     }
     if icd_code:
         payload["icd_code"] = icd_code
+        payload.setdefault("icd_version", 10)
     resp = _request_with_retry(session, "post",
                                f"{config.DRCHRONO_API_BASE}/problems",
                                json=payload)
