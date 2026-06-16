@@ -39,10 +39,29 @@ function submitForm(data) {
   const row = buildRow(data);
   sheet.appendRow(row);
 
+  // Force the Zip Code cell to plain-text and rewrite the raw value.
+  // appendRow lets Sheets auto-coerce "02134" to the number 2134, dropping
+  // the leading zero before the importer ever reads it. Setting the cell's
+  // format to "@" (text) and re-writing keeps New England / NJ zips intact.
+  setZipAsText_(sheet, data.zipCode);
+
   // Trigger GitHub Actions to process the new submission
   triggerImport_();
 
   return { success: true };
+}
+
+// Re-write the just-appended row's Zip Code cell as plain text so Sheets
+// doesn't strip a leading zero (e.g. 02134 -> 2134). Looks the column up by
+// header so it survives column reordering; no-ops safely if not found.
+function setZipAsText_(sheet, zipCode) {
+  if (!zipCode) return;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const col = headers.indexOf("Patient Zip Code") + 1;
+  if (col < 1) return;
+  const cell = sheet.getRange(sheet.getLastRow(), col);
+  cell.setNumberFormat("@");           // plain text format
+  cell.setValue(String(zipCode));      // rewrite raw string, zero intact
 }
 
 function triggerImport_() {
