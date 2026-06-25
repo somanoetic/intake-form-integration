@@ -481,7 +481,7 @@
       <div class="field">
         <label>Zip Code <span class="required">*</span></label>
         <input type="text" id="zipCode" required maxlength="10" pattern="\d{5}(-\d{4})?" placeholder="12345">
-        <span class="error-msg" id="zipCode-error">Please enter a valid 5-digit zip code</span>
+        <span class="error-msg" id="zipCode-error">Zip code is required (5 digits)</span>
       </div>
     </div>
   </div>
@@ -851,9 +851,9 @@
       }
     });
 
-    // Validate zip code
+    // Validate zip code — required and must match 5- or 9-digit format
     var zip = section.querySelector("#zipCode");
-    if (zip && zip.value.trim() && !/^\d{5}(-\d{4})?$/.test(zip.value.trim())) {
+    if (zip && !/^\d{5}(-\d{4})?$/.test(zip.value.trim())) {
       showError("zipCode", true);
       valid = false;
     }

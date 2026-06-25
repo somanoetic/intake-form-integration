@@ -27,6 +27,13 @@ RESPONSES_SHEET = os.getenv("INTAKE_RESPONSES_SHEET", "Form Responses 1")
 # Column name used to mark rows as processed
 PROCESSED_COLUMN = "Processed"
 
+# Column where user resolves a PENDING REVIEW row: paste a patient ID,
+# or type "new" to force-create, or "skip" to discard.
+MATCH_COLUMN = "Match Patient ID"
+
+# Status string written to PROCESSED_COLUMN when a row is waiting on review.
+PENDING_STATUS = "PENDING REVIEW"
+
 # ── Notifications ────────────────────────────────────────────────────
 _notify = os.getenv("NOTIFY_EMAILS", "")
 NOTIFY_EMAILS = [e.strip() for e in _notify.split(",") if e.strip()]

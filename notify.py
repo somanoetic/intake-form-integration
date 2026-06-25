@@ -64,6 +64,51 @@ def send_error_email(errors):
     )
 
 
+def send_review_email(pending):
+    """Send an email listing intake rows awaiting a manual patient match."""
+    if not pending:
+        return
+
+    sections = []
+    for p in pending:
+        lines = [
+            f"  Row {p['row_number']}: {p['patient_name']}",
+            f"    DOB: {p['dob']}   Email: {p['email']}   Phone: {p['phone']}",
+            f"    Reason: {p['reason']}",
+        ]
+        if p["candidates"]:
+            lines.append("    Candidates:")
+            for c in p["candidates"]:
+                lines.append(
+                    f"      - ID {c.get('id')}: "
+                    f"{c.get('first_name', '')} {c.get('last_name', '')} "
+                    f"(DOB {c.get('date_of_birth', '')}, "
+                    f"{c.get('email', '') or 'no email'}, "
+                    f"{c.get('cell_phone', '') or c.get('home_phone', '') or 'no phone'})"
+                )
+        else:
+            lines.append("    Candidates: (none returned)")
+        sections.append("\n".join(lines))
+
+    body_text = (
+        f"Patient Intake Import: {len(pending)} submission(s) need a manual match\n"
+        f"{'=' * 40}\n\n"
+        + "\n\n".join(sections)
+        + f"\n\nTo resolve each row, open the spreadsheet and fill the "
+          f"'{config.MATCH_COLUMN}' column with one of:\n"
+          f"  - a DrChrono patient ID (to link to that existing chart)\n"
+          f"  - 'new' (to force-create a new patient)\n"
+          f"  - 'skip' (to discard this submission)\n"
+        + f"\nSpreadsheet: https://docs.google.com/spreadsheets/d/{config.SPREADSHEET_ID}/edit"
+    )
+
+    _send_email(
+        config.NOTIFY_EMAILS,
+        f"Intake Import: {len(pending)} submission(s) need manual match",
+        body_text,
+    )
+
+
 def send_success_email(count):
     """Send a summary email after successful import."""
     body_text = (
